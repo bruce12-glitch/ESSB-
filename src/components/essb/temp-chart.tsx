@@ -1,7 +1,7 @@
 "use client";
 
+import { HISTORY_WINDOW_S, HistoryPoint, MEASURED_A, MEASURED_B, T_AMB } from "@/lib/sim-engine";
 import { useEffect, useRef } from "react";
-import { HistoryPoint, MEASURED_A, MEASURED_B, T_AMB, HISTORY_WINDOW_S } from "@/lib/sim-engine";
 
 interface TempChartProps {
   historyRef: React.MutableRefObject<HistoryPoint[]>;
@@ -112,6 +112,21 @@ export function TempChart({ historyRef }: TempChartProps) {
       // data lines
       const line = (key: "a" | "b", color: string) => {
         if (!hist.length) return;
+        const pts = hist.filter((p) => p.t >= t0);
+        if (!pts.length) return;
+
+        // soft gradient area under the curve
+        const area = ctx.createLinearGradient(0, padT, 0, padT + ih);
+        area.addColorStop(0, `${color}44`);
+        area.addColorStop(1, `${color}00`);
+        ctx.fillStyle = area;
+        ctx.beginPath();
+        ctx.moveTo(xOf(pts[0].t), padT + ih);
+        for (const p of pts) ctx.lineTo(xOf(p.t), yOf(p[key]));
+        ctx.lineTo(xOf(pts[pts.length - 1].t), padT + ih);
+        ctx.closePath();
+        ctx.fill();
+
         ctx.strokeStyle = color;
         ctx.lineWidth = 2.4;
         ctx.lineJoin = "round";
@@ -129,14 +144,18 @@ export function TempChart({ historyRef }: TempChartProps) {
           }
         }
         ctx.stroke();
-        // head dot
+        // glowing head dot
         const last = hist[hist.length - 1];
         const x = xOf(last.t);
         const y = yOf(last[key]);
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
         ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, monospace";
         ctx.textAlign = x > w - 60 ? "right" : "left";
         ctx.fillText(`${last[key].toFixed(1)}°C`, x + (x > w - 60 ? -8 : 8), y - 6);

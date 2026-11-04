@@ -1,9 +1,9 @@
 "use client";
 
+import { MATERIALS } from "@/lib/sim-engine";
 import { motion } from "framer-motion";
 import { ArrowDown, Play } from "lucide-react";
 import { SimScene } from "./sim-scene";
-import { MATERIALS } from "@/lib/sim-engine";
 
 const fadeUp = {
   initial: { opacity: 0, y: 26 },
@@ -30,7 +30,7 @@ export function Hero() {
           <motion.h1 {...fadeUp} transition={{ duration: 0.6, delay: 0.08 }} className="mt-5 font-display font-extrabold leading-[0.95] text-[3.4rem] sm:text-7xl md:text-[5.2rem]">
             <span className="text-cream">ROOF</span>
             <br />
-            <span className="text-ambery">INSULATION</span>
+            <span className="hero-shimmer">INSULATION</span>
           </motion.h1>
 
           <motion.p {...fadeUp} transition={{ duration: 0.6, delay: 0.16 }} className="mt-5 text-lg md:text-xl leading-relaxed text-cream/85 max-w-xl">
@@ -41,14 +41,14 @@ export function Hero() {
           <motion.div {...fadeUp} transition={{ duration: 0.6, delay: 0.24 }} className="mt-7 flex flex-wrap gap-3">
             <a
               href="#lab"
-              className="inline-flex items-center gap-2 rounded-full bg-ambery hover:bg-sun text-forest font-bold px-6 py-3.5 transition-colors shadow-lg shadow-black/25"
+              className="inline-flex items-center gap-2 rounded-full bg-ambery hover:bg-sun text-forest font-bold px-6 py-3.5 transition-all shadow-lg shadow-black/25 hover:shadow-xl hover:shadow-ambery/25 hover:-translate-y-0.5 active:translate-y-0"
             >
               <Play className="w-4.5 h-4.5" />
               Run the Virtual Lab
             </a>
             <a
               href="#test"
-              className="inline-flex items-center gap-2 rounded-full border-2 border-cream/25 hover:border-ambery hover:text-ambery text-cream font-bold px-6 py-3.5 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-cream/25 hover:border-ambery hover:text-ambery text-cream font-bold px-6 py-3.5 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               Watch the real test
             </a>

@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
 import {
-  Material,
-  MEASURED_A,
-  MEASURED_B,
-  T_AMB,
-  roomAirColor,
-  thermoFraction,
+    Material,
+    MEASURED_A,
+    MEASURED_B,
+    roomAirColor,
+    T_AMB,
+    thermoFraction,
 } from "@/lib/sim-engine";
+import { useMemo } from "react";
 
 /* ------------------------------------------------------------------ */
 /*  Geometry constants (SVG user units, viewBox 1000 x 620)            */
@@ -147,6 +147,22 @@ export function SimScene({ source, intensity, running, materialB, temps }: SimSc
             <stop offset="70%" stopColor="#eef1f3" />
             <stop offset="100%" stopColor="#aeb6bd" />
           </linearGradient>
+          <linearGradient id="doubleFoilGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="40%" stopColor="#d7dde3" />
+            <stop offset="60%" stopColor="#f2f5f8" />
+            <stop offset="100%" stopColor="#b8c0c8" />
+          </linearGradient>
+          <linearGradient id="thatchGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#dbb170" />
+            <stop offset="55%" stopColor="#c9a05c" />
+            <stop offset="100%" stopColor="#ab8347" />
+          </linearGradient>
+          <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#74c69d" />
+            <stop offset="60%" stopColor="#5aa469" />
+            <stop offset="100%" stopColor="#40916c" />
+          </linearGradient>
           <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#eedeb9" />
             <stop offset="100%" stopColor="#e2cd9e" />
@@ -265,11 +281,35 @@ export function SimScene({ source, intensity, running, materialB, temps }: SimSc
 
           <polygon
             points="590,358 850,358 720,266"
-            fill={materialB.id === "black" ? "#26221d" : materialB.id === "white" ? "#f2ede1" : "url(#foilGrad)"}
-            stroke={materialB.id === "black" ? "#191612" : materialB.id === "white" ? "#d8d0bd" : "#9aa2ab"}
+            fill={materialB.roofFill}
+            stroke={materialB.roofStroke}
             strokeWidth="2"
           />
-          {(materialB.id === "foil" || materialB.id === "full") && (
+          {materialB.id === "thatch" && (
+            <g stroke="#9c7435" strokeWidth="2.4" strokeLinecap="round" opacity="0.65">
+              {[0.18, 0.32, 0.46, 0.6, 0.74, 0.86].map((f, i) => {
+                const y = 358 - f * 88;
+                const half = (1 - f) * 130;
+                return <line key={i} x1={720 - half + 10} y1={y} x2={720 + half - 10} y2={y} strokeDasharray="14 10" />;
+              })}
+            </g>
+          )}
+          {materialB.id === "green" && (
+            <g>
+              {[
+                [652, 344], [676, 328], [700, 312], [720, 300], [742, 313], [766, 330], [790, 346],
+              ].map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y - 6} r={i % 2 === 0 ? 6 : 4.5} fill="#95d5b2" opacity="0.9" />
+              ))}
+              <circle cx="720" cy="288" r="5" fill="#ffb703" />
+            </g>
+          )}
+          {materialB.id === "double" && (
+            <g stroke="#7c868f" strokeWidth="1.6" strokeDasharray="10 7" opacity="0.7">
+              <line x1="604" y1="352" x2="836" y2="352" />
+            </g>
+          )}
+          {(materialB.id === "foil" || materialB.id === "full" || materialB.id === "double") && (
             <g className="sim-anim" style={{ animation: "foil-sparkle 2.4s ease-in-out infinite", animationPlayState: playState, transformOrigin: "center", transformBox: "fill-box" }}>
               <line x1="636" y1="340" x2="668" y2="318" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
               <line x1="776" y1="316" x2="806" y2="338" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.65" />

@@ -253,6 +253,27 @@
   }
 }
 
+/* ---------- Hero shimmer headline ---------- */
+
+.hero-shimmer {
+  background: linear-gradient(100deg, #ffb703 10%, #ffd60a 30%, #f77f00 50%, #ffd60a 70%, #ffb703 90%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-text 4.5s ease-in-out infinite;
+}
+
+@keyframes shimmer-text {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
 .sim-anim {
   will-change: transform, opacity;
 }
@@ -260,6 +281,13 @@
 @media (prefers-reduced-motion: reduce) {
   .sim-anim {
     animation: none !important;
+  }
+  .hero-shimmer {
+    animation: none !important;
+    color: #ffb703;
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
   }
   html {
     scroll-behavior: auto;

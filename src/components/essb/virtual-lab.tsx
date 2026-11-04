@@ -1,23 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Pause, Play, RotateCcw, Sun, LampCeiling, Sparkles, CloudSun, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { SimScene, SceneTemps } from "./sim-scene";
-import { TempChart } from "./temp-chart";
 import {
-  HistoryPoint,
-  MATERIAL_LIST,
-  MATERIALS,
-  MaterialId,
-  SimState,
-  T_AMB,
-  initialState,
-  indoorTarget,
-  roofTemp,
-  stepTemp,
+    HistoryPoint,
+    MATERIALS,
+    MATERIAL_LIST,
+    MaterialId,
+    ROOF_RATE,
+    SimState,
+    T_AMB,
+    indoorRate,
+    indoorTarget,
+    initialState,
+    predictSteady,
+    roofTemp,
+    stepTemp,
 } from "@/lib/sim-engine";
+import { CloudSun, FlaskConical, Gauge, LampCeiling, Layers, Leaf, Pause, Play, RotateCcw, Sparkles, Sun } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SceneTemps, SimScene } from "./sim-scene";
+import { TempChart } from "./temp-chart";
 
 type Source = "sun" | "lamp";
 
@@ -42,7 +45,11 @@ export function VirtualLab() {
   const [intensity, setIntensity] = useState(1);
   const [materialB, setMaterialB] = useState<MaterialId>("full");
   const [running, setRunning] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const [ui, setUi] = useState<UiTick>(initialUi);
+
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
 
   const simRef = useRef<{ state: SimState; sincePush: number; sinceUi: number }>({
     state: initialState(),
@@ -68,7 +75,7 @@ export function VirtualLab() {
     let last = performance.now();
 
     const tick = (now: number) => {
-      const dt = Math.min(0.1, (now - last) / 1000);
+      const dt = Math.min(0.1, (now - last) / 1000) * speedRef.current;
       last = now;
       const sim = simRef.current;
       const s = sim.state;
@@ -78,10 +85,10 @@ export function VirtualLab() {
       const roofB = roofTemp(matB, intensity);
       const inB = indoorTarget(matB, intensity);
 
-      s.aRoof = stepTemp(s.aRoof, roofA, dt);
-      s.aIn = stepTemp(s.aIn, inA, dt);
-      s.bRoof = stepTemp(s.bRoof, roofB, dt);
-      s.bIn = stepTemp(s.bIn, inB, dt);
+      s.aRoof = stepTemp(s.aRoof, roofA, dt, ROOF_RATE);
+      s.aIn = stepTemp(s.aIn, inA, dt, indoorRate(MATERIALS.black));
+      s.bRoof = stepTemp(s.bRoof, roofB, dt, ROOF_RATE);
+      s.bIn = stepTemp(s.bIn, inB, dt, indoorRate(matB));
       s.elapsed += dt;
 
       sim.sincePush += dt;
@@ -114,6 +121,11 @@ export function VirtualLab() {
   };
 
   const dt = ui.temps.aIn - ui.temps.bIn;
+  const steady = predictSteady(matB, intensity);
+  const settled =
+    ui.elapsed > 2 &&
+    Math.abs(ui.temps.aIn - steady.a) < 0.25 &&
+    Math.abs(ui.temps.bIn - steady.b) < 0.25;
 
   return (
     <div className="rounded-3xl bg-[#10231c] border border-white/10 shadow-2xl shadow-forest/40 overflow-hidden">
@@ -138,7 +150,12 @@ export function VirtualLab() {
             tone="cool"
           />
           <Readout label="DIFFERENCE" value={`−${dt.toFixed(1)}°C`} sub="House B vs House A" tone="amber" />
-          <Readout label="ELAPSED" value={fmtTime(ui.elapsed)} sub="experiment clock" tone="neutral" />
+          <Readout
+            label="ELAPSED"
+            value={fmtTime(ui.elapsed)}
+            sub={settled ? "✓ steady state reached" : running ? "heating up…" : "experiment clock"}
+            tone={settled ? "cool" : "neutral"}
+          />
         </div>
       </div>
 
@@ -178,7 +195,7 @@ export function VirtualLab() {
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => setRunning((r) => !r)}
-              className="flex-1 min-w-28 bg-ambery hover:bg-sun text-forest font-bold"
+              className="flex-1 min-w-28 bg-ambery hover:bg-sun text-forest font-bold transition-transform active:scale-95"
               aria-label={running ? "Pause simulation" : "Start simulation"}
             >
               {running ? <Pause className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
@@ -191,12 +208,37 @@ export function VirtualLab() {
 
           <div>
             <div className="text-[11px] font-bold tracking-[0.18em] text-mint/80 mb-2 flex items-center gap-1.5">
+              <Gauge className="w-3.5 h-3.5" /> TIME SPEED
+            </div>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Simulation speed">
+              {([1, 2, 4] as const).map((s) => (
+                <button
+                  key={s}
+                  role="radio"
+                  aria-checked={speed === s}
+                  onClick={() => setSpeed(s)}
+                  className={`rounded-xl border py-2 text-sm font-bold font-mono transition-all ${
+                    speed === s
+                      ? "border-ambery bg-pine/40 text-ambery ring-2 ring-ambery/60"
+                      : "border-white/10 bg-white/[0.04] text-cream/70 hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[11px] font-bold tracking-[0.18em] text-mint/80 mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> TRY A PRESET
             </div>
-            <div className="grid sm:grid-cols-3 gap-2">
+            <div className="grid sm:grid-cols-2 gap-2">
               <PresetButton onClick={() => applyPreset({ source: "lamp", intensity: 1, material: "full" })} icon={<FlaskConical className="w-3.5 h-3.5" />} label="Our lab test" />
               <PresetButton onClick={() => applyPreset({ source: "sun", intensity: 1, material: "white" })} icon={<CloudSun className="w-3.5 h-3.5" />} label="White paint" />
               <PresetButton onClick={() => applyPreset({ source: "sun", intensity: 0.35, material: "full" })} icon={<CloudSun className="w-3.5 h-3.5" />} label="Cloudy noon" />
+              <PresetButton onClick={() => applyPreset({ source: "sun", intensity: 1, material: "double" })} icon={<Layers className="w-3.5 h-3.5" />} label="Double foil" />
+              <PresetButton onClick={() => applyPreset({ source: "sun", intensity: 1, material: "green" })} icon={<Leaf className="w-3.5 h-3.5" />} label="Green roof" />
             </div>
           </div>
         </div>
@@ -204,7 +246,7 @@ export function VirtualLab() {
         {/* material selector */}
         <div className="lg:col-span-3">
           <div className="text-[11px] font-bold tracking-[0.18em] text-mint/80 mb-2">HOUSE B ROOF — PICK A MATERIAL</div>
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2" role="radiogroup" aria-label="House B roof material">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2" role="radiogroup" aria-label="House B roof material">
             {MATERIAL_LIST.map((m) => {
               const active = m.id === materialB;
               return (
@@ -213,10 +255,10 @@ export function VirtualLab() {
                   role="radio"
                   aria-checked={active}
                   onClick={() => setMaterialB(m.id)}
-                  className={`text-left rounded-xl border p-3 transition-all min-h-20 ${
+                  className={`text-left rounded-xl border p-3 transition-all min-h-20 active:scale-[0.98] ${
                     active
                       ? "border-ambery bg-pine/40 ring-2 ring-ambery/60"
-                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/25"
+                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/25 hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
@@ -230,10 +272,23 @@ export function VirtualLab() {
               );
             })}
           </div>
-          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[12px] leading-relaxed text-cream/70">
-            <span className="font-bold text-mint">What to watch:</span> sunlight photons bounce off reflective roofs but sink into the black one — the roof surface climbs toward{" "}
-            <span className="font-mono text-clay">{roofTemp(MATERIALS.black, intensity).toFixed(0)}°C</span>, and that heat leaks into the room below. Insulation under the foil slows whatever still
-            gets through. This simplified single-zone model is calibrated to reproduce our measured result —{" "}
+          <div className="mt-3 rounded-xl border border-ambery/30 bg-ambery/[0.07] p-3 text-[12px] leading-relaxed text-cream/80 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <span className="font-bold text-ambery">Prediction:</span> at {Math.round(intensity * 100)}% power, House B settles at{" "}
+              <span className="font-mono font-bold text-mint">{steady.b.toFixed(1)}°C</span> —{" "}
+              <span className="font-mono font-bold text-ambery">{steady.delta.toFixed(1)}°C cooler</span> than House A ({" "}
+              <span className="font-mono">{steady.a.toFixed(1)}°C</span>).
+            </div>
+            {settled && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-mint/15 border border-mint/40 text-mint text-[10.5px] font-bold tracking-wider px-2.5 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-mint animate-pulse" /> STEADY STATE
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[12px] leading-relaxed text-cream/70">
+            <span className="font-bold text-mint">What to watch:</span> sunlight photons bounce off reflective roofs but sink into the black one — the roof surface climbs fast toward{" "}
+            <span className="font-mono text-clay">{roofTemp(MATERIALS.black, intensity).toFixed(0)}°C</span>, and that heat leaks slowly into the room below. Insulation under the roof slows whatever still
+            gets through even more. This simplified single-zone model is calibrated to reproduce our measured result —{" "}
             <span className="font-mono text-ambery">42.6°C vs 31.8°C at full power</span>.
           </div>
         </div>

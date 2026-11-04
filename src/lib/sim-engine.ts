@@ -13,7 +13,14 @@
  * the temperatures the team measured under the heat lamp.
  */
 
-export type MaterialId = "black" | "white" | "foil" | "full";
+export type MaterialId =
+  | "black"
+  | "white"
+  | "foil"
+  | "full"
+  | "thatch"
+  | "green"
+  | "double";
 
 export interface Material {
   id: MaterialId;
@@ -25,6 +32,10 @@ export interface Material {
   u: number;
   /** visual roof fill for the SVG scene */
   swatch: string;
+  /** polygon fill used by the roof in the SVG scene */
+  roofFill: string;
+  /** polygon stroke used by the roof in the SVG scene */
+  roofStroke: string;
   reflectLabel: string;
   insulated: boolean;
 }
@@ -37,6 +48,8 @@ export const MATERIALS: Record<MaterialId, Material> = {
     absorb: 0.9,
     u: 0.3,
     swatch: "#26221d",
+    roofFill: "#26221d",
+    roofStroke: "#191612",
     reflectLabel: "reflects ~10%",
     insulated: false,
   },
@@ -47,6 +60,8 @@ export const MATERIALS: Record<MaterialId, Material> = {
     absorb: 0.35,
     u: 0.3,
     swatch: "#f2ede1",
+    roofFill: "#f2ede1",
+    roofStroke: "#d8d0bd",
     reflectLabel: "reflects ~65%",
     insulated: false,
   },
@@ -57,6 +72,8 @@ export const MATERIALS: Record<MaterialId, Material> = {
     absorb: 0.26,
     u: 0.3,
     swatch: "#c9ced4",
+    roofFill: "url(#foilGrad)",
+    roofStroke: "#9aa2ab",
     reflectLabel: "reflects ~74%",
     insulated: false,
   },
@@ -67,7 +84,45 @@ export const MATERIALS: Record<MaterialId, Material> = {
     absorb: 0.26,
     u: 0.12,
     swatch: "#dfe4e9",
+    roofFill: "url(#foilGrad)",
+    roofStroke: "#9aa2ab",
     reflectLabel: "reflects ~74%",
+    insulated: true,
+  },
+  thatch: {
+    id: "thatch",
+    name: "Thatch / palm leaves",
+    tag: "natural shade layer",
+    absorb: 0.55,
+    u: 0.17,
+    swatch: "#c9a05c",
+    roofFill: "url(#thatchGrad)",
+    roofStroke: "#9c7435",
+    reflectLabel: "reflects ~45%",
+    insulated: true,
+  },
+  green: {
+    id: "green",
+    name: "Green roof (plants + soil)",
+    tag: "evapotranspiration cools it",
+    absorb: 0.5,
+    u: 0.15,
+    swatch: "#5aa469",
+    roofFill: "url(#greenGrad)",
+    roofStroke: "#3d7a49",
+    reflectLabel: "reflects ~50%",
+    insulated: true,
+  },
+  double: {
+    id: "double",
+    name: "Double foil + air gap",
+    tag: "best combo — reflect twice",
+    absorb: 0.15,
+    u: 0.09,
+    swatch: "#eef2f6",
+    roofFill: "url(#doubleFoilGrad)",
+    roofStroke: "#8f99a3",
+    reflectLabel: "reflects ~85%",
     insulated: true,
   },
 };
@@ -77,12 +132,16 @@ export const MATERIAL_LIST: Material[] = [
   MATERIALS.white,
   MATERIALS.foil,
   MATERIALS.full,
+  MATERIALS.thatch,
+  MATERIALS.green,
+  MATERIALS.double,
 ];
 
 export const T_AMB = 30; // °C, a hot day in the lab
 export const K_ROOF = 46.7; // surface heating coefficient at I = 1
 export const V_LOSS = 0.7; // room heat-loss coefficient to ambient
-export const K_RATE = 0.055; // per-second relaxation rate
+export const K_RATE = 0.055; // per-second relaxation rate (default)
+export const ROOF_RATE = 0.2; // roof surface is thin — it climbs fast
 export const HISTORY_WINDOW_S = 180; // seconds of history kept
 
 export function roofTemp(mat: Material, intensity: number): number {
@@ -94,9 +153,25 @@ export function indoorTarget(mat: Material, intensity: number): number {
   return (mat.u * tr + V_LOSS * T_AMB) / (mat.u + V_LOSS);
 }
 
+/**
+ * Indoor relaxation rate — a thicker / more insulating roof (small u)
+ * both settles lower AND takes longer to get there, like the real foam
+ * and cotton layers in the lab.
+ */
+export function indoorRate(mat: Material): number {
+  return 0.018 + mat.u * 0.125;
+}
+
 /** Advance one temperature toward its equilibrium (exact exponential step). */
-export function stepTemp(temp: number, target: number, dt: number): number {
-  return temp + (target - temp) * (1 - Math.exp(-K_RATE * dt));
+export function stepTemp(temp: number, target: number, dt: number, rate = K_RATE): number {
+  return temp + (target - temp) * (1 - Math.exp(-rate * dt));
+}
+
+/** Steady-state indoor temperatures for both houses at the current settings. */
+export function predictSteady(matB: Material, intensity: number): { a: number; b: number; delta: number } {
+  const a = indoorTarget(MATERIALS.black, intensity);
+  const b = indoorTarget(matB, intensity);
+  return { a, b, delta: a - b };
 }
 
 export interface SimState {
