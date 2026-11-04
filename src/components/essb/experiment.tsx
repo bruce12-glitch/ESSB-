@@ -23,11 +23,11 @@ export function Experiment() {
               <video
                 controls
                 preload="metadata"
-                poster="/media/experiment-poster.jpg"
+                poster={`${process.env.NEXT_PUBLIC_BASE_PATH}/media/experiment-poster.jpg`}
                 className="block w-full aspect-video bg-ink"
                 aria-label="Video of the working model experiment: two cardboard houses under a heat lamp with thermometers showing 42.6°C and 31.8°C"
               >
-                <source src="/media/experiment.mp4" type="video/mp4" />
+                <source src={`${process.env.NEXT_PUBLIC_BASE_PATH}/media/experiment.mp4`} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
             </div>

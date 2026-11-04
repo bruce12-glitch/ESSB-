@@ -1,7 +1,7 @@
+import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Sora } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "ESSB Project Team — SRM IST KTR" }],
   icons: {
-    icon: "/roof-icon.svg",
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH}/roof-icon.svg`,
   },
   openGraph: {
     title: "Roof Insulation — ESSB Virtual Lab",
